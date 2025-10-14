@@ -1,5 +1,5 @@
 model:
-  name: "llama3:8b"
+  name: "llama3.2:3b"
   temperature: 0.3
   max_tokens: 512
   top_p: 0.9
