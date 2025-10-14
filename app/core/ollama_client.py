@@ -22,6 +22,21 @@ class OllamaClient:
             print(f"Ollama connection error: {e}")
             return False
     
+    def pull_model(self, model_name: str = None) -> Dict[str, Any]:
+        try:
+            target_model = model_name if model_name else self.model
+            print(f"Pulling model: {target_model}")
+            self.client.pull(target_model)
+            return {
+                'success': True,
+                'message': f"モデル '{target_model}' のダウンロードが完了しました"
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f"モデルのダウンロードに失敗しました: {str(e)}"
+            }
+    
     def ensure_model(self) -> bool:
         try:
             models = self.client.list()

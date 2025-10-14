@@ -106,7 +106,7 @@ class GradioApp:
                         model_name = gr.Textbox(
                             label="モデル名",
                             value=self.model_name,
-                            placeholder="例: llama3:8b"
+                            placeholder="例: llama3.2:3b"
                         )
                         temperature = gr.Slider(
                             label="Temperature",
@@ -135,6 +135,23 @@ class GradioApp:
                     update_config_btn = gr.Button("設定を更新", variant="primary")
                     config_status = gr.Textbox(
                         label="設定更新状態",
+                        value="",
+                        interactive=False
+                    )
+                    
+                    gr.Markdown("### モデルダウンロード")
+                    gr.Markdown("推奨モデル: `gemma2:2b` (1.6GB), `llama3.2:3b` (2GB), `qwen2.5:3b` (2.3GB)")
+                    
+                    with gr.Row():
+                        download_model_name = gr.Textbox(
+                            label="ダウンロードするモデル名",
+                            value=self.model_name,
+                            placeholder="例: llama3.2:3b"
+                        )
+                        download_model_btn = gr.Button("モデルをダウンロード", variant="secondary")
+                    
+                    download_status = gr.Textbox(
+                        label="ダウンロード状態",
                         value="",
                         interactive=False
                     )
@@ -177,6 +194,12 @@ class GradioApp:
                 outputs=[connection_status]
             )
             
+            download_model_btn.click(
+                fn=self._handle_model_download,
+                inputs=[download_model_name],
+                outputs=[download_status]
+            )
+            
         return demo
     
     def _handle_file_upload(self, file_obj) -> Tuple[str, Any]:
@@ -214,13 +237,17 @@ class GradioApp:
         return progress_msg, current_msg, self.data_processor.get_results_dataframe()
     
     def _handle_download(self) -> Any:
-        if self.data_processor.results is None:
-            return None
-        
-        csv_file = "/tmp/classification_results.csv"
-        self.data_processor.results.to_csv(csv_file, index=False, encoding='utf-8-sig')
-        
-        return csv_file
+        try:
+            if self.data_processor.results is None or len(self.data_processor.results) == 0:
+                return gr.File(value=None, visible=False)
+            
+            csv_file = "/tmp/classification_results.csv"
+            self.data_processor.results.to_csv(csv_file, index=False, encoding='utf-8-sig')
+            
+            return gr.File(value=csv_file, visible=True)
+        except Exception as e:
+            print(f"CSV download error: {e}")
+            return gr.File(value=None, visible=False)
     
     def _handle_config_update(self, model: str, temp: float, tokens: int, top_p: float) -> str:
         try:
@@ -239,6 +266,13 @@ class GradioApp:
             return "接続成功: Ollamaサーバーに接続できました"
         else:
             return "接続失敗: Ollamaサーバーに接続できません"
+    
+    def _handle_model_download(self, model_name: str) -> str:
+        if not model_name:
+            return "エラー: モデル名を入力してください"
+        
+        result = self.ollama_client.pull_model(model_name)
+        return result['message']
     
     def launch(self):
         demo = self.create_interface()
