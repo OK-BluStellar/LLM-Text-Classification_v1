@@ -96,8 +96,7 @@ class GradioApp:
                             gr.Markdown("### 6. 結果表示")
                             results_table = gr.Dataframe(
                                 label="分類結果",
-                                interactive=False,
-                                wrap=True
+                                interactive=False
                             )
                 
                 with gr.Tab("設定パネル"):
