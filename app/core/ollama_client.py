@@ -22,6 +22,36 @@ class OllamaClient:
             print(f"Ollama connection error: {e}")
             return False
     
+    def get_installed_models(self) -> Dict[str, Any]:
+        try:
+            models = self.client.list()
+            model_list = []
+            for m in models.get('models', []):
+                model_list.append({
+                    'name': m.get('name', ''),
+                    'size': self._format_size(m.get('size', 0)),
+                    'modified': m.get('modified_at', '')
+                })
+            return {
+                'success': True,
+                'models': model_list,
+                'count': len(model_list)
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'models': [],
+                'count': 0,
+                'error': str(e)
+            }
+    
+    def _format_size(self, size_bytes: int) -> str:
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size_bytes < 1024.0:
+                return f"{size_bytes:.1f} {unit}"
+            size_bytes /= 1024.0
+        return f"{size_bytes:.1f} PB"
+    
     def pull_model(self, model_name: str = None) -> Dict[str, Any]:
         try:
             target_model = model_name if model_name else self.model

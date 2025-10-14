@@ -139,6 +139,18 @@ class GradioApp:
                         interactive=False
                     )
                     
+                    gr.Markdown("### ダウンロード済みモデル")
+                    
+                    with gr.Row():
+                        refresh_models_btn = gr.Button("モデルリストを更新", variant="secondary", size="sm")
+                    
+                    installed_models = gr.Dataframe(
+                        label="インストール済みモデル",
+                        headers=["モデル名", "サイズ", "更新日時"],
+                        interactive=False,
+                        wrap=True
+                    )
+                    
                     gr.Markdown("### モデルダウンロード")
                     gr.Markdown("推奨モデル: `gemma2:2b` (1.6GB), `llama3.2:3b` (2GB), `qwen2.5:3b` (2.3GB)")
                     
@@ -197,7 +209,19 @@ class GradioApp:
             download_model_btn.click(
                 fn=self._handle_model_download,
                 inputs=[download_model_name],
-                outputs=[download_status]
+                outputs=[download_status, installed_models]
+            )
+            
+            refresh_models_btn.click(
+                fn=self._get_installed_models,
+                inputs=[],
+                outputs=[installed_models]
+            )
+            
+            demo.load(
+                fn=self._get_installed_models,
+                inputs=[],
+                outputs=[installed_models]
             )
             
         return demo
@@ -267,12 +291,21 @@ class GradioApp:
         else:
             return "接続失敗: Ollamaサーバーに接続できません"
     
-    def _handle_model_download(self, model_name: str) -> str:
+    def _get_installed_models(self) -> Any:
+        result = self.ollama_client.get_installed_models()
+        if result['success']:
+            data = [[m['name'], m['size'], m['modified']] for m in result['models']]
+            return data
+        else:
+            return []
+    
+    def _handle_model_download(self, model_name: str) -> Tuple[str, Any]:
         if not model_name:
-            return "エラー: モデル名を入力してください"
+            return "エラー: モデル名を入力してください", self._get_installed_models()
         
         result = self.ollama_client.pull_model(model_name)
-        return result['message']
+        updated_list = self._get_installed_models()
+        return result['message'], updated_list
     
     def launch(self):
         demo = self.create_interface()
