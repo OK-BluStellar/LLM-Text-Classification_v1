@@ -1,0 +1,24 @@
+model:
+  name: "llama3:8b"
+  temperature: 0.3
+  max_tokens: 512
+  top_p: 0.9
+  
+ollama:
+  host: "http://localhost:11434"
+  timeout: 300
+  
+gradio:
+  server_name: "0.0.0.0"
+  server_port: 7860
+  share: false
+  
+app:
+  default_test_data:
+    - id: 1
+      text: "手首痛い。朝のこわばりも感じている。何もしてないのに症状出た。"
+    - id: 2
+      text: "ぶつけた後に手関節いたい。どんな病気なのだろう？"
+    - id: 3
+      text: "今日はいい天気。朝、交通事故にあった。首が何となく痛い。"
+  default_prompt: "手関節に痛みを感じているか?"
