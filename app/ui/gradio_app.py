@@ -1,5 +1,6 @@
 import gradio as gr
 from typing import Any, Tuple
+from omegaconf import OmegaConf
 from ..core.ollama_client import OllamaClient
 from ..core.data_processor import DataProcessor
 from ..core.classifier import TextClassifier
@@ -20,7 +21,8 @@ class GradioApp:
         self.classifier = TextClassifier(self.ollama_client, self.data_processor)
         self.current_results = []
         
-        success, msg = self.data_processor.load_from_default(config.app.default_test_data)
+        default_data = OmegaConf.to_container(config.app.default_test_data, resolve=True)
+        success, msg = self.data_processor.load_from_default(default_data)
         
     def create_interface(self) -> gr.Blocks:
         with gr.Blocks(
