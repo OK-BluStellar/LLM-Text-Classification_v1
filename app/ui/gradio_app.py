@@ -282,32 +282,51 @@ class GradioApp:
             ax.text(0.5, 0.5, f'グラフ生成エラー\n{str(e)}', ha='center', va='center')
             return fig
     
-    def _handle_classification(self, prompt: str) -> Tuple[str, str, Any, Any]:
+    def _handle_classification(self, prompt: str):
         if not prompt:
-            return "エラー: プロンプトを入力してください", "", self._create_pie_chart([]), None
+            yield "エラー: プロンプトを入力してください", "", self._create_pie_chart([]), None
+            return
         
         self.classifier.start()
         self.current_results = []
         
-        def progress_callback(current: int, total: int, result: dict):
-            self.current_results.append(result)
+        data = self.data_processor.get_data()
+        if data is None or len(data) == 0:
+            yield "エラー: データが読み込まれていません", "", self._create_pie_chart([]), None
+            return
         
-        results = self.classifier.classify_batch(prompt, progress_callback)
+        total = len(data)
         
-        if not results:
-            return "エラー: データが読み込まれていません", "", self._create_pie_chart([]), None
+        for idx, row in data.iterrows():
+            text_id = row.get('ID', idx + 1)
+            text = row.get('テキスト', row.get('text', ''))
+            
+            result = self.ollama_client.classify_text(text, prompt)
+            
+            result_dict = {
+                'ID': text_id,
+                'テキスト': text,
+                '分類結果': result['classification'],
+                'LLM応答': result['raw_response']
+            }
+            self.current_results.append(result_dict)
+            
+            current = len(self.current_results)
+            progress_msg = f"処理中: {current}/{total}"
+            
+            current_msg = f"ID: {text_id}\nテキスト: {text}\n分類: {result['classification']}\nLLM応答: {result['raw_response']}"
+            
+            chart = self._create_pie_chart(self.current_results)
+            
+            import pandas as pd
+            results_df = pd.DataFrame(self.current_results)
+            
+            yield progress_msg, current_msg, chart, results_df
         
-        total = len(results)
-        progress_msg = f"完了: {total}/{total}"
+        success, csv_content = self.data_processor.save_results(self.current_results)
         
-        last_result = results[-1] if results else {}
-        current_msg = f"ID: {last_result.get('ID', '')}\nテキスト: {last_result.get('テキスト', '')}\n分類: {last_result.get('分類結果', '')}\nLLM応答: {last_result.get('LLM応答', '')}"
-        
-        success, csv_content = self.data_processor.save_results(results)
-        
-        chart = self._create_pie_chart(results)
-        
-        return progress_msg, current_msg, chart, self.data_processor.get_results_dataframe()
+        final_progress = f"完了: {total}/{total}"
+        yield final_progress, current_msg, chart, self.data_processor.get_results_dataframe()
     
     def _handle_download(self) -> Any:
         try:
