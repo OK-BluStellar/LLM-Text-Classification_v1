@@ -1,6 +1,10 @@
 import gradio as gr
 from typing import Any, Tuple
 from omegaconf import OmegaConf
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+matplotlib.rcParams['font.family'] = 'Noto Sans CJK JP'
 from ..core.ollama_client import OllamaClient
 from ..core.data_processor import DataProcessor
 from ..core.classifier import TextClassifier
@@ -93,7 +97,10 @@ class GradioApp:
                             download_btn = gr.Button("CSVダウンロード", variant="secondary")
                             download_file = gr.File(label="結果ファイル", visible=False)
                             
-                            gr.Markdown("### 6. 結果表示")
+                            gr.Markdown("### 6. 分類グラフ")
+                            classification_chart = gr.Plot(label="分類結果の円グラフ")
+                            
+                            gr.Markdown("### 7. 結果表示")
                             results_table = gr.Dataframe(
                                 label="分類結果",
                                 interactive=False
@@ -185,7 +192,7 @@ class GradioApp:
             classify_btn.click(
                 fn=self._handle_classification,
                 inputs=[prompt_input],
-                outputs=[progress_text, current_result, results_table]
+                outputs=[progress_text, current_result, classification_chart, results_table]
             )
             
             download_btn.click(
@@ -235,9 +242,49 @@ class GradioApp:
         else:
             return msg, None
     
-    def _handle_classification(self, prompt: str) -> Tuple[str, str, Any]:
+    def _create_pie_chart(self, results: list) -> Any:
+        try:
+            if not results:
+                fig, ax = plt.subplots(figsize=(8, 6))
+                ax.pie([100], labels=['未分類'], colors=['#cccccc'], autopct='%1.1f%%', startangle=90)
+                ax.set_title('分類結果（未処理）', fontsize=14, pad=20)
+                plt.tight_layout()
+                return fig
+            
+            classification_counts = {}
+            for result in results:
+                llm_response = result.get('LLM応答', 'エラー')
+                classification = result.get('分類結果', -1)
+                
+                if classification == -1:
+                    label = 'エラー'
+                elif classification == 1:
+                    label = 'はい'
+                elif classification == 0:
+                    label = 'いいえ'
+                else:
+                    label = str(classification)
+                
+                classification_counts[label] = classification_counts.get(label, 0) + 1
+            
+            labels = list(classification_counts.keys())
+            sizes = list(classification_counts.values())
+            colors = ['#2ecc71', '#e74c3c', '#95a5a6'][:len(labels)]
+            
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+            ax.set_title(f'分類結果（全{len(results)}件）', fontsize=14, pad=20)
+            plt.tight_layout()
+            return fig
+        except Exception as e:
+            print(f"Chart creation error: {e}")
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.text(0.5, 0.5, f'グラフ生成エラー\n{str(e)}', ha='center', va='center')
+            return fig
+    
+    def _handle_classification(self, prompt: str) -> Tuple[str, str, Any, Any]:
         if not prompt:
-            return "エラー: プロンプトを入力してください", "", None
+            return "エラー: プロンプトを入力してください", "", self._create_pie_chart([]), None
         
         self.classifier.start()
         self.current_results = []
@@ -248,7 +295,7 @@ class GradioApp:
         results = self.classifier.classify_batch(prompt, progress_callback)
         
         if not results:
-            return "エラー: データが読み込まれていません", "", None
+            return "エラー: データが読み込まれていません", "", self._create_pie_chart([]), None
         
         total = len(results)
         progress_msg = f"完了: {total}/{total}"
@@ -258,7 +305,9 @@ class GradioApp:
         
         success, csv_content = self.data_processor.save_results(results)
         
-        return progress_msg, current_msg, self.data_processor.get_results_dataframe()
+        chart = self._create_pie_chart(results)
+        
+        return progress_msg, current_msg, chart, self.data_processor.get_results_dataframe()
     
     def _handle_download(self) -> Any:
         try:
