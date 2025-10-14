@@ -9,12 +9,22 @@ from ..core.classifier import TextClassifier
 class GradioApp:
     def __init__(self, config: Any):
         self.config = config
+        
+        self.model_name = str(config.model.name)
+        self.model_temperature = float(config.model.temperature)
+        self.model_max_tokens = int(config.model.max_tokens)
+        self.model_top_p = float(config.model.top_p)
+        self.default_prompt = str(config.app.default_prompt)
+        self.gradio_server_name = str(config.gradio.server_name)
+        self.gradio_server_port = int(config.gradio.server_port)
+        self.gradio_share = bool(config.gradio.share)
+        
         self.ollama_client = OllamaClient(
             host=config.ollama.host,
-            model=config.model.name,
-            temperature=config.model.temperature,
-            max_tokens=config.model.max_tokens,
-            top_p=config.model.top_p,
+            model=self.model_name,
+            temperature=self.model_temperature,
+            max_tokens=self.model_max_tokens,
+            top_p=self.model_top_p,
             timeout=config.ollama.timeout
         )
         self.data_processor = DataProcessor()
@@ -56,7 +66,7 @@ class GradioApp:
                             gr.Markdown("### 2. プロンプト入力")
                             prompt_input = gr.Textbox(
                                 label="分類用プロンプト",
-                                value=self.config.app.default_prompt,
+                                value=self.default_prompt,
                                 placeholder="例: 手関節に痛みを感じているか?",
                                 lines=3
                             )
@@ -96,14 +106,14 @@ class GradioApp:
                     with gr.Row():
                         model_name = gr.Textbox(
                             label="モデル名",
-                            value=self.config.model.name,
+                            value=self.model_name,
                             placeholder="例: llama3:8b"
                         )
                         temperature = gr.Slider(
                             label="Temperature",
                             minimum=0.0,
                             maximum=1.0,
-                            value=self.config.model.temperature,
+                            value=self.model_temperature,
                             step=0.1
                         )
                     
@@ -112,14 +122,14 @@ class GradioApp:
                             label="Max Tokens",
                             minimum=100,
                             maximum=2048,
-                            value=self.config.model.max_tokens,
+                            value=self.model_max_tokens,
                             step=100
                         )
                         top_p = gr.Slider(
                             label="Top P",
                             minimum=0.0,
                             maximum=1.0,
-                            value=self.config.model.top_p,
+                            value=self.model_top_p,
                             step=0.05
                         )
                     
@@ -234,7 +244,7 @@ class GradioApp:
     def launch(self):
         demo = self.create_interface()
         demo.launch(
-            server_name=self.config.gradio.server_name,
-            server_port=self.config.gradio.server_port,
-            share=self.config.gradio.share
+            server_name=self.gradio_server_name,
+            server_port=self.gradio_server_port,
+            share=self.gradio_share
         )
