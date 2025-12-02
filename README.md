@@ -67,7 +67,7 @@ docker compose up --build
 
 3. **ブラウザでアクセス**
 ```
-http://localhost:7860
+http://localhost:7861
 ```
 
 起動後、すぐにWebUIが表示されます。Basic認証は不要です。
@@ -154,7 +154,7 @@ ID,text
 docker compose up
 
 # ブラウザでアクセス
-# http://localhost:7860
+# http://localhost:7861
 ```
 
 **確認項目:**
@@ -214,7 +214,7 @@ ollama:
 
 gradio:
   server_name: "0.0.0.0"      # バインドアドレス
-  server_port: 7860            # ポート番号
+  server_port: 7861            # ポート番号
   share: false                 # Gradio公開共有
 ```
 
